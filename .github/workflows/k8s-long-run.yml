@@ -31,11 +31,11 @@ jobs:
 
       - name: Create remote repo (if not exists) and push
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ vars.GH_TOKEN }}
         run: |
           set -euo pipefail
           REPO=aloware/devop-sandbox
-          gh auth status || echo "Ensure GH token is available as GH_TOKEN or GITHUB_TOKEN"
+          gh auth status || echo "Ensure GH token is available as GH_TOKEN"
           if ! gh repo view "$REPO" >/dev/null 2>&1; then
             gh repo create "$REPO" --private --confirm --source=. --remote=origin
           else
@@ -48,12 +48,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Update kubeconfig for EKS
         run: |
           set -euo pipefail
-          aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
+          aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
 
       - name: Run tests inside Kubernetes Job
         id: run_job
@@ -64,10 +64,18 @@ jobs:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: long-run-test-job
+  name: long-run-test-job-${{ github.run_id }}
+  labels:
+    app: devops-sandbox-test
+    environment: dev
+    workflow-run: "${{ github.run_id }}"
 spec:
   backoffLimit: 0
   template:
+    metadata:
+      labels:
+        app: devops-sandbox-test
+        environment: dev
     spec:
       restartPolicy: Never
       containers:
@@ -95,12 +103,21 @@ spec:
 EOF
 
           kubectl apply -f /tmp/long-run-job.yaml
+          
+          JOB_NAME="long-run-test-job-${{ github.run_id }}"
+          echo "======================================"
+          echo "Created Kubernetes Job: $JOB_NAME"
+          echo "Environment: dev"
+          echo "======================================"
+          
           echo "Waiting for Job completion (timeout 4h)..."
-          kubectl wait --for=condition=complete --timeout=4h job/long-run-test-job
+          kubectl wait --for=condition=complete --timeout=4h job/$JOB_NAME
 
           # Get pod name
-          POD=$(kubectl get pods -l job-name=long-run-test-job -o jsonpath='{.items[0].metadata.name}')
-          echo "Job pod: $POD"
+          POD=$(kubectl get pods -l job-name=$JOB_NAME -o jsonpath='{.items[0].metadata.name}')
+          echo "======================================"
+          echo "Job pod name: $POD"
+          echo "======================================"
           echo "--- pod logs ---"
           kubectl logs "$POD" -c test-runner || true
 

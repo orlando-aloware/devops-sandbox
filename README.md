@@ -12,13 +12,28 @@ What was added
   - configures AWS credentials and updates kubeconfig for EKS
   - launches a Kubernetes `Job` using `cypress/included` image which clones the repo, starts the app, runs Cypress tests, and exits with the test result
 
-Required secrets for the workflow
-- `GH_TOKEN` or `GITHUB_TOKEN` — permissions to create/push the remote repo
-- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` — credentials with EKS access
-- `AWS_REGION` — region for EKS cluster
+Required secrets and variables for the workflow
+
+**Repository Variables** (Settings > Secrets and variables > Actions > Variables tab):
+- `GH_TOKEN` — GitHub token with permissions to create/push repos
+- `AWS_REGION` — AWS region for EKS cluster (e.g., `us-west-2`)
+
+**Repository Secrets** (Settings > Secrets and variables > Actions > Secrets tab):
+- `AWS_ACCESS_KEY_ID` — AWS access key with EKS access
+- `AWS_SECRET_ACCESS_KEY` — AWS secret key
 - `EKS_CLUSTER_NAME` — the EKS cluster name
+
+**Environment Secrets** (optional, for `dev` environment):
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` — scoped to dev environment
+
+Pod identification
+- The Kubernetes Job is named `long-run-test-job-<workflow-run-id>` (e.g., `long-run-test-job-12345678`)
+- The pod name will be `long-run-test-job-<workflow-run-id>-<random-hash>` (e.g., `long-run-test-job-12345678-x7k2m`)
+- Labels: `environment=dev`, `app=devops-sandbox-test`
+- To find your pod: `kubectl get pods -l app=devops-sandbox-test -n default`
 
 Notes and caveats
 - The Cypress test intentionally includes long `cy.wait()` durations (1 hour + 2 hours) to make the workflow run ~3 hours. Adjust or remove these waits in `cypress/e2e/long_run.cy.js` when you don't want to consume runtime minutes.
 - The workflow relies on the `cypress/included` image so Cypress is available in the pod; the pod clones the repo and runs `npm start` and `npm run cypress:run`.
 - The workflow sets a 4-hour wait timeout for the job — change `timeout-minutes` in the workflow if you expect different durations.
+- The Job runs in the `default` namespace; modify the workflow to use a different namespace if needed.
