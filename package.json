@@ -1,0 +1,15 @@
+{
+  "name": "devops-sandbox-sample",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "cypress:run": "cypress run --config video=false"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "cypress": "^12.0.0"
+  }
+}

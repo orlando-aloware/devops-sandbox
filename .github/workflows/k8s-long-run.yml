@@ -1,0 +1,115 @@
+name: K8s Long Run CI
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  run-in-eks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install prerequisites (gh, kubectl)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y git curl jq
+          # Install gh CLI
+          if ! command -v gh >/dev/null 2>&1; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install -y gh
+          fi
+          # Install kubectl
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          fi
+
+      - name: Create remote repo (if not exists) and push
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO=aloware/devop-sandbox
+          gh auth status || echo "Ensure GH token is available as GH_TOKEN or GITHUB_TOKEN"
+          if ! gh repo view "$REPO" >/dev/null 2>&1; then
+            gh repo create "$REPO" --private --confirm --source=. --remote=origin
+          else
+            echo "Repo already exists: $REPO"
+          fi
+          git push -u origin HEAD || echo "push failed or already pushed"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
+
+      - name: Run tests inside Kubernetes Job
+        id: run_job
+        run: |
+          set -euo pipefail
+
+          cat <<'EOF' > /tmp/long-run-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: long-run-test-job
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test-runner
+        image: cypress/included:12.0.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          set -e
+          echo "Cloning repo..."
+          git clone https://github.com/aloware/devop-sandbox.git /workspace || true
+          cd /workspace || exit 1
+          echo "Installing dependencies..."
+          # install production deps; cypress included image already has Cypress
+          npm ci --omit=dev || true
+          echo "Starting app in background..."
+          npm start &
+          sleep 5
+          echo "Running Cypress tests (long run)..."
+          npm run cypress:run || exit_code=$?
+          echo "Tests exited with ${exit_code:-0}"
+          exit ${exit_code:-0}
+      
+EOF
+
+          kubectl apply -f /tmp/long-run-job.yaml
+          echo "Waiting for Job completion (timeout 4h)..."
+          kubectl wait --for=condition=complete --timeout=4h job/long-run-test-job
+
+          # Get pod name
+          POD=$(kubectl get pods -l job-name=long-run-test-job -o jsonpath='{.items[0].metadata.name}')
+          echo "Job pod: $POD"
+          echo "--- pod logs ---"
+          kubectl logs "$POD" -c test-runner || true
+
+          EXIT_CODE=$(kubectl get pod "$POD" -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}') || EXIT_CODE=1
+          echo "Pod exit code: $EXIT_CODE"
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+      - name: Fail if pod failed
+        if: steps.run_job.outputs.exit_code != '0'
+        run: |
+          echo "Job failed (non-zero exit code)"
+          exit 1
