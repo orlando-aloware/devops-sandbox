@@ -15,10 +15,10 @@ What was added
 Required secrets and variables for the workflow
 
 **Repository Variables** (Settings > Secrets and variables > Actions > Variables tab):
-- `GH_TOKEN` — GitHub token with permissions to create/push repos
 - `AWS_REGION` — AWS region for EKS cluster (e.g., `us-west-2`)
 
 **Repository Secrets** (Settings > Secrets and variables > Actions > Secrets tab):
+- `GH_TOKEN` — GitHub token with permissions to create/push repos
 - `AWS_ACCESS_KEY_ID` — AWS access key with EKS access
 - `AWS_SECRET_ACCESS_KEY` — AWS secret key
 - `EKS_CLUSTER_NAME` — the EKS cluster name

@@ -31,7 +31,7 @@ jobs:
 
       - name: Create remote repo (if not exists) and push
         env:
-          GH_TOKEN: ${{ vars.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -euo pipefail
           REPO=aloware/devop-sandbox
