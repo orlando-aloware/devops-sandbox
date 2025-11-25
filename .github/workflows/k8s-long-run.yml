@@ -48,13 +48,18 @@ jobs:
           REPO=aloware/devop-sandbox
           gh auth status
           
+          # Configure git to use the token
+          git config --global url."https://oauth2:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          
           # Add devop-sandbox remote if it doesn't exist
           if ! git remote | grep -q devop-sandbox; then
             git remote add devop-sandbox "https://github.com/$REPO.git"
           fi
           
-          # Push to devop-sandbox repo
-          git push devop-sandbox HEAD:main --force || echo "Push completed with status $?"
+          # Push current branch to main in devop-sandbox repo
+          git push devop-sandbox HEAD:refs/heads/main --force
+          
+          echo "✅ Code pushed to $REPO"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
