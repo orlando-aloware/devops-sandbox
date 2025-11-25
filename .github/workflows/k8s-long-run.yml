@@ -68,18 +68,20 @@ jobs:
 
       - name: Run tests inside Kubernetes Job
         id: run_job
+        env:
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          cat <<'EOF' > /tmp/long-run-job.yaml
+          cat > /tmp/long-run-job.yaml <<EOF
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: long-run-test-job-${{ github.run_id }}
+  name: long-run-test-job-${RUN_ID}
   labels:
     app: devops-sandbox-test
     environment: dev
-    workflow-run: "${{ github.run_id }}"
+    workflow-run: "${RUN_ID}"
 spec:
   backoffLimit: 0
   template:
@@ -110,7 +112,7 @@ spec:
             npm run cypress:run || exit_code=\$?
             echo "Tests exited with \${exit_code:-0}"
             exit \${exit_code:-0}
-          EOF
+EOF
 
           kubectl apply -f /tmp/long-run-job.yaml
           
