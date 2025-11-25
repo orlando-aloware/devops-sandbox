@@ -95,22 +95,20 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["/bin/sh","-c"]
         args:
-        - |
-          set -e
-          echo "Cloning repo..."
-          git clone https://github.com/aloware/devop-sandbox.git /workspace || true
-          cd /workspace || exit 1
-          echo "Installing dependencies..."
-          # install production deps; cypress included image already has Cypress
-          npm ci --omit=dev || true
-          echo "Starting app in background..."
-          npm start &
-          sleep 5
-          echo "Running Cypress tests (long run)..."
-          npm run cypress:run || exit_code=$?
-          echo "Tests exited with ${exit_code:-0}"
-          exit ${exit_code:-0}
-
+          - |
+            set -e
+            echo "Cloning repo..."
+            git clone https://github.com/aloware/devop-sandbox.git /workspace || true
+            cd /workspace || exit 1
+            echo "Installing dependencies..."
+            npm ci --omit=dev || true
+            echo "Starting app in background..."
+            npm start &
+            sleep 5
+            echo "Running Cypress tests (long run)..."
+            npm run cypress:run || exit_code=\$?
+            echo "Tests exited with \${exit_code:-0}"
+            exit \${exit_code:-0}
 EOF
 
           kubectl apply -f /tmp/long-run-job.yaml
