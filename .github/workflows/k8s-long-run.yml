@@ -40,19 +40,21 @@ jobs:
             sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
           fi
 
-      - name: Create remote repo (if not exists) and push
+      - name: Push code to devop-sandbox repo
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -euo pipefail
           REPO=aloware/devop-sandbox
-          gh auth status || echo "Ensure GH token is available as GH_TOKEN"
-          if ! gh repo view "$REPO" >/dev/null 2>&1; then
-            gh repo create "$REPO" --private --confirm --source=. --remote=origin
-          else
-            echo "Repo already exists: $REPO"
+          gh auth status
+          
+          # Add devop-sandbox remote if it doesn't exist
+          if ! git remote | grep -q devop-sandbox; then
+            git remote add devop-sandbox "https://github.com/$REPO.git"
           fi
-          git push -u origin HEAD || echo "push failed or already pushed"
+          
+          # Push to devop-sandbox repo
+          git push devop-sandbox HEAD:main --force || echo "Push completed with status $?"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
