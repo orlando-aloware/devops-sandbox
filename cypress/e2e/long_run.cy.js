@@ -1,5 +1,5 @@
 describe('Long running test', () => {
-  it('visits app and waits ~3 hours total', { defaultCommandTimeout: 4 * 60 * 60 * 1000, watchForFileChanges: false }, () => {
+  it('visits app and waits ~3 hours total', { defaultCommandTimeout: 4 * 60 * 60 * 1000 }, () => {
     // Visit the simple Express app
     cy.visit('/')
     cy.contains('DevOps Sandbox Sample App')
