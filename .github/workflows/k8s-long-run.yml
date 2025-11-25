@@ -10,8 +10,6 @@ on:
   push:
     branches:
       - optimize-zap-pipeline
-    paths:
-      - '.github/workflows/k8s-long-run.yml'
 
 jobs:
   run-in-eks:
