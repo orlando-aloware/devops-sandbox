@@ -105,7 +105,7 @@ spec:
           npm run cypress:run || exit_code=$?
           echo "Tests exited with ${exit_code:-0}"
           exit ${exit_code:-0}
-      
+
 EOF
 
           kubectl apply -f /tmp/long-run-job.yaml
