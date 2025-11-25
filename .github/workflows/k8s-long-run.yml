@@ -1,7 +1,12 @@
 name: K8s Long Run CI
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_spec:
+        description: 'Cypress test spec to run (leave empty for all tests)'
+        required: false
+        default: ''
 
 jobs:
   run-in-eks:
