@@ -48,13 +48,11 @@ jobs:
           REPO=aloware/devop-sandbox
           gh auth status
           
-          # Configure git to use the token
-          git config --global url."https://oauth2:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          # Remove existing remote if it exists
+          git remote remove devop-sandbox 2>/dev/null || true
           
-          # Add devop-sandbox remote if it doesn't exist
-          if ! git remote | grep -q devop-sandbox; then
-            git remote add devop-sandbox "https://github.com/$REPO.git"
-          fi
+          # Add devop-sandbox remote with authentication
+          git remote add devop-sandbox "https://oauth2:${GH_TOKEN}@github.com/$REPO.git"
           
           # Push current branch to main in devop-sandbox repo
           git push devop-sandbox HEAD:refs/heads/main --force
