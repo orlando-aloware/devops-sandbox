@@ -40,22 +40,22 @@ jobs:
             sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
           fi
 
-      - name: Push code to devop-sandbox repo
+      - name: Push code to devops-sandbox repo
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -euo pipefail
-          REPO=aloware/devop-sandbox
+          REPO=aloware/devops-sandbox
           gh auth status
           
           # Remove existing remote if it exists
-          git remote remove devop-sandbox 2>/dev/null || true
+          git remote remove devops-sandbox 2>/dev/null || true
           
-          # Add devop-sandbox remote with authentication
-          git remote add devop-sandbox "https://oauth2:${GH_TOKEN}@github.com/$REPO.git"
+          # Add devops-sandbox remote with authentication
+          git remote add devops-sandbox "https://oauth2:${GH_TOKEN}@github.com/$REPO.git"
           
-          # Push current branch to main in devop-sandbox repo
-          git push devop-sandbox HEAD:refs/heads/main --force
+          # Push current branch to main in devops-sandbox repo
+          git push devops-sandbox HEAD:refs/heads/main --force
           
           echo "✅ Code pushed to $REPO"
 
@@ -107,7 +107,7 @@ jobs:
                     - |
                       set -e
                       echo "Cloning repo..."
-                      git clone https://oauth2:${GH_TOKEN}@github.com/aloware/devop-sandbox.git /workspace
+                      git clone https://oauth2:${GH_TOKEN}@github.com/aloware/devops-sandbox.git /workspace
                       cd /workspace || exit 1
                       echo "Installing dependencies..."
                       npm ci --omit=dev || true
