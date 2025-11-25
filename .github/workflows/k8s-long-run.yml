@@ -93,8 +93,9 @@ spec:
       - name: test-runner
         image: cypress/included:12.0.0
         imagePullPolicy: IfNotPresent
-        command: ["/bin/sh","-c"]
-        args:
+        command:
+          - /bin/sh
+          - -c
           - |
             set -e
             echo "Cloning repo..."
