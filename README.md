@@ -10,6 +10,7 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
 - **Custom Metrics**: Exposes a simple metric endpoint for Prometheus scraping.
 - **Structured Logging**: Application logs are formatted as JSON for better querying in Loki.
 - **Simulated Scenarios**: Endpoints to dispatch successful jobs and simulate job failures.
+- **Round-Robin Queue Metrics**: Simulated metrics for multi-tenant queue systems across different environments (Development, Staging, Production).
 
 ## Prerequisites
 
@@ -97,6 +98,13 @@ Use the following endpoints to generate traffic and logs:
 - **View Raw Metrics**: 
   `GET http://localhost:8000/metrics`
   - Shows the raw Prometheus-formatted metrics.
+  - Includes standard Redis metrics and the simulated Round-Robin queue metrics.
+
+- **View Round-Robin JSON Data**:
+  - `GET http://localhost:8000/metrics/rr-queue/development`
+  - `GET http://localhost:8000/metrics/rr-queue/staging`
+  - `GET http://localhost:8000/metrics/rr-queue/production`
+  - Returns JSON data simulating queue stats for different companies and queues.
 
 ## Grafana Cloud Dashboard
 
