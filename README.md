@@ -141,3 +141,14 @@ While the system runs automatically, you can manually interact with these endpoi
  - Simple: https://learningaquaware.grafana.net/public-dashboards/59a1fd427cec4397bbb5fdb46bdba486
  - Composed: https://learningaquaware.grafana.net/public-dashboards/65cf0c30dbdd437c91f1dc9c66dfecbd
 
+## Screenshots
+
+### All Environments
+![All Environments](imgs/all.png)
+
+### Development Environment
+![Development Environment](imgs/dev.png)
+
+### Staging Environment
+![Staging Environment](imgs/staging.png)
+
