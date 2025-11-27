@@ -37,6 +37,11 @@ class RoundRobinMetricController extends Controller
 
         foreach ($companies as $company) {
             foreach ($queues as $queue) {
+                // Dispatch a real job to Horizon for visibility
+                if (($environment === 'development' || $environment === 'staging') && rand(0, 10) > 8) {
+                     \App\Jobs\DummyJob::dispatch($company, $queue);
+                }
+
                 $metrics[] = [
                     'environment' => $environment,
                     'company' => $company,

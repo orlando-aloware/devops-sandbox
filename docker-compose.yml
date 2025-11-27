@@ -17,6 +17,7 @@ services:
       - HOSTNAME=grafana-agent
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    network_mode: "host"
 
 volumes:
   redis-data:

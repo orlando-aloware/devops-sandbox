@@ -1,16 +1,16 @@
 # Laravel Horizon + Grafana Cloud Observability Demo
 
-This project demonstrates a simple Laravel application using Laravel Horizon for queue management, with logs and metrics shipped to Grafana Cloud via Grafana Agent.
+This project demonstrates a robust observability setup for a Laravel application using Laravel Horizon, Redis, and Grafana Cloud. It showcases how to ship logs and metrics (including custom application metrics) to Grafana Cloud using the Grafana Agent.
 
 ## Features
 
-- **Laravel Horizon**: Manages Redis queues.
-- **Redis**: Used as the queue driver (running in Docker).
-- **Grafana Agent**: Ships application logs and custom metrics to Grafana Cloud (running in Docker).
-- **Custom Metrics**: Exposes a simple metric endpoint for Prometheus scraping.
-- **Structured Logging**: Application logs are formatted as JSON for better querying in Loki.
-- **Simulated Scenarios**: Endpoints to dispatch successful jobs and simulate job failures.
-- **Round-Robin Queue Metrics**: Simulated metrics for multi-tenant queue systems across different environments (Development, Staging, Production).
+- **Laravel Horizon**: Manages Redis queues with a beautiful dashboard.
+- **Redis**: Used as the queue driver and session handler (running in Docker).
+- **Grafana Agent**: A lightweight agent that ships application logs (Loki) and metrics (Prometheus) to Grafana Cloud.
+- **Round-Robin Simulation**: A complex simulation of a multi-tenant queue system (Companies A, B, C...) with different queue types (High, Default, Low) across multiple environments (Development, Staging, Production).
+- **Auto-Generating Metrics**: The application automatically generates simulated traffic and metrics whenever the `/metrics` endpoint is scraped by the Grafana Agent.
+- **Structured Logging**: Application logs are formatted as JSON for powerful querying in Grafana Loki.
+- **Ready-to-Use Dashboard**: Includes a `grafana_dashboard.json` file to instantly visualize the Round-Robin metrics.
 
 ## Prerequisites
 
@@ -18,6 +18,7 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
 - Composer
 - Docker & Docker Compose
 - A Grafana Cloud Account (Free tier works)
+- Linux Environment (Recommended for `network_mode: "host"`)
 
 ## Installation & Setup
 
@@ -39,7 +40,7 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
     php artisan key:generate
     ```
     
-    Ensure your `.env` is configured for Redis and JSON logging (already set if you cloned this repo, but double-check):
+    Ensure your `.env` is configured for Redis and JSON logging:
     ```dotenv
     QUEUE_CONNECTION=redis
     LOG_CHANNEL=json
@@ -47,9 +48,11 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
     ```
 
 4.  **Grafana Agent Configuration**
-    Open `agent-config.yaml` in the root directory. You **MUST** update this file with your Grafana Cloud credentials.
+    The `agent-config.yaml` file controls how data is sent to Grafana Cloud.
     
-    Replace the following placeholders:
+    > **Important**: This file contains secrets. Do not commit your real credentials to version control.
+    
+    Update `agent-config.yaml` with your Grafana Cloud credentials:
     - `YOUR_PROMETHEUS_URL` (e.g., `https://prometheus-prod-xx-xx.grafana.net/api/prom/push`)
     - `YOUR_PROMETHEUS_USER` (User ID)
     - `YOUR_PROMETHEUS_PASSWORD` (API Key / Access Policy Token)
@@ -59,8 +62,11 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
 
 ## Running the Application
 
-1.  **Start Infrastructure (Redis + Grafana Agent)**
-    Use Docker Compose to bring up the required services.
+1.  **Start Infrastructure**
+    We use Docker Compose to run Redis and the Grafana Agent.
+    
+    *Note: The configuration uses `network_mode: "host"` to allow the Agent to easily access the Laravel app running on the host machine. This works best on Linux.*
+    
     ```bash
     docker-compose up -d
     ```
@@ -79,48 +85,59 @@ This project demonstrates a simple Laravel application using Laravel Horizon for
     ```
     Access the Horizon dashboard at `http://localhost:8000/horizon`.
 
-## Usage & Testing
+## How It Works
 
-Use the following endpoints to generate traffic and logs:
+### 1. Metric Generation
+The application exposes a `/metrics` endpoint. When the Grafana Agent scrapes this endpoint (every 15 seconds), the `RoundRobinMetricController` executes. 
 
-- **Dispatch a Job**: 
-  `GET http://localhost:8000/dispatch`
-  - Queues a `ProcessJob`.
-  - Increments the `jobs_dispatched_total` metric.
-  - Logs "Job processing started/finished".
+**Crucially**, this controller does two things:
+1.  **Generates Random Metrics**: It creates random values for "pending jobs" for various companies and queues.
+2.  **Dispatches Real Jobs**: As a side-effect, it dispatches actual `DummyJob` instances to the Redis queue. This ensures that the Horizon dashboard also shows activity without you needing to manually trigger jobs.
 
-- **Simulate a Failure**: 
-  `GET http://localhost:8000/fail`
-  - Queues a `FailJob` that throws an exception.
-  - Logs an error which will appear in Grafana.
-  - Visible in Horizon "Failed Jobs".
+### 2. Visualization
+The `grafana_dashboard.json` file contains a complete dashboard definition.
+
+**To Import the Dashboard:**
+1.  Go to your Grafana Cloud instance.
+2.  Click **Dashboards** -> **New** -> **Import**.
+3.  Upload the `grafana_dashboard.json` file or paste its content.
+4.  Select your Prometheus datasource when prompted.
+
+## Usage & Testing Endpoints
+
+While the system runs automatically, you can manually interact with these endpoints:
 
 - **View Raw Metrics**: 
   `GET http://localhost:8000/metrics`
-  - Shows the raw Prometheus-formatted metrics.
-  - Includes standard Redis metrics and the simulated Round-Robin queue metrics.
+  - Triggers the simulation and returns Prometheus-formatted metrics.
 
-- **View Round-Robin JSON Data**:
+- **Dispatch a Single Job**: 
+  `GET http://localhost:8000/dispatch`
+  - Manually queues a `ProcessJob`.
+
+- **Simulate a Failure**: 
+  `GET http://localhost:8000/fail`
+  - Queues a `FailJob` that throws an exception (useful for testing error logging).
+
+- **View Simulation Data (JSON)**:
   - `GET http://localhost:8000/metrics/rr-queue/development`
   - `GET http://localhost:8000/metrics/rr-queue/staging`
   - `GET http://localhost:8000/metrics/rr-queue/production`
-  - Returns JSON data simulating queue stats for different companies and queues.
 
-## Grafana Cloud Dashboard
+## Troubleshooting
 
-To visualize the data in Grafana Cloud:
+- **No Data in Grafana?**
+  - Check the Grafana Agent logs: `docker logs grafana-agent`.
+  - Ensure `php artisan serve` is running.
+  - Verify `agent-config.yaml` has the correct credentials and URLs.
+  
+- **Horizon is Empty?**
+  - Ensure `php artisan horizon` is running.
+  - Wait for the next scrape interval (15s) or manually visit `http://localhost:8000/metrics`.
 
-1.  **Verify Data**: Use "Explore" in Grafana to check:
-    - **Loki**: Query `{job="laravel"}` to see logs.
-    - **Prometheus**: Query `jobs_dispatched_total` to see metrics.
+## Demo Dashboards (Public)
+ - Simple: https://learningaquaware.grafana.net/public-dashboards/441fca3445e24e1e8146e379b2c26e37
+ - Simple: https://learningaquaware.grafana.net/public-dashboards/46a4015d579b44fdbed97d8133cb9a35
+ - Simple: https://learningaquaware.grafana.net/public-dashboards/59a1fd427cec4397bbb5fdb46bdba486
+ - Composed: https://learningaquaware.grafana.net/public-dashboards/65cf0c30dbdd437c91f1dc9c66dfecbd
 
-2.  **Create Dashboard**:
-    - **Job Rate Panel**: Time series visualization with query `rate(jobs_dispatched_total[1m])`.
-    - **Logs Panel**: Logs visualization with query `{job="laravel"}`.
-    - **Errors Panel**: Logs visualization with query `{job="laravel"} |= "error"`.
-
-### Dashboards
- - https://learningaquaware.grafana.net/public-dashboards/441fca3445e24e1e8146e379b2c26e37
- - https://learningaquaware.grafana.net/public-dashboards/46a4015d579b44fdbed97d8133cb9a35
- - https://learningaquaware.grafana.net/public-dashboards/59a1fd427cec4397bbb5fdb46bdba486
- 
