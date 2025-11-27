@@ -139,8 +139,8 @@ While the system runs automatically, you can manually interact with these endpoi
  - Simple: https://learningaquaware.grafana.net/public-dashboards/441fca3445e24e1e8146e379b2c26e37
  - Simple: https://learningaquaware.grafana.net/public-dashboards/46a4015d579b44fdbed97d8133cb9a35
  - Simple: https://learningaquaware.grafana.net/public-dashboards/59a1fd427cec4397bbb5fdb46bdba486
- - Composed: https://learningaquaware.grafana.net/public-dashboards/65cf0c30dbdd437c91f1dc9c66dfecbd
-
+ - Composed: https://learningaquaware.grafana.net/public-dashboards/4f00977735da49809d443edce70115aa
+ 
 ## Screenshots
 
 ### All Environments
